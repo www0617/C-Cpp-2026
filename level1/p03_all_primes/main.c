@@ -13,7 +13,7 @@ int test (int i)
 }
 int main()
 {int i;
-    for(i=2;i<=25;i++)
+    for(i=2;i<=2000;i++)
     {
         test(i);
     }
