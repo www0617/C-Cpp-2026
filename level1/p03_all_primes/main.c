@@ -14,11 +14,11 @@ int main(void)
 {
     clock_t t0 = clock();
 
-    int arr[100000];
+    int arr[1000];
     int *k = arr;
     int *m = arr;
 
-    for (int i = 2; i <= 100000; i++) {
+    for (int i = 2; i <= 1000; i++) {
         if (test(i, m, k)) {
             *k = i;
             k++;
