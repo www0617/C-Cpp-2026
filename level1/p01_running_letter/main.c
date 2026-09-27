@@ -6,7 +6,14 @@ static int get_width(void) {
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &i);
     return i.srWindow.Right - i.srWindow.Left + 1;
 }
-int main (void) {
+void hideCursor() {
+    HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+    GetConsoleCursorInfo(handle, &cursorInfo);
+    cursorInfo.bVisible = FALSE;
+    SetConsoleCursorInfo(handle, &cursorInfo);
+}
+int main (void) {hideCursor();
     int i,j=0,k;int width = get_width();
     while (1) {
         if (j==0) {i=0;

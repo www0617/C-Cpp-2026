@@ -1,35 +1,35 @@
 #include <stdio.h>
 #include <time.h>
 
-static int test(int i, const int *m, const int *k)
-{
-    for (const int *g = m; g < k; g++) {
-        if ((*g) * (*g) > i) return 1;
-        if (i % (*g) == 0)   return 0;
-    }
-    return 1;
-}
+#define N 1000
 
-int main(void)
-{
-    clock_t t0 = clock();
+int main(void) {
+    int is_composite[N + 1] = {0};
+    int primes[N];
+    int cnt = 0;
 
-    int arr[1000];
-    int *k = arr;
-    int *m = arr;
+    clock_t start = clock();
 
-    for (int i = 2; i <= 1000; i++) {
-        if (test(i, m, k)) {
-            *k = i;
-            k++;
+    for (int i = 2; i <= N; i++) {
+        if (!is_composite[i]) {
+            primes[cnt++] = i;
+        }
+        for (int j = 0; j < cnt; j++) {
+            if (i * primes[j] > N) break;
+            is_composite[i * primes[j]] = 1;
+            if (i % primes[j] == 0) break;
         }
     }
 
-    for (int *p = arr; p < k; p++)
-        printf("%6d", *p);
+    clock_t end = clock();
 
-    clock_t t1 = clock();
-    printf("\ntime: %.6f second\n",
-           (double)(t1 - t0) / CLOCKS_PER_SEC);
+    for (int i = 0; i < cnt; i++) {
+        printf("%d ", primes[i]);
+    }
+    printf("\n");
+
+    printf("total: %d\n", cnt);
+    printf("time: %.6f s\n", (double)(end - start) / CLOCKS_PER_SEC);
+
     return 0;
 }
