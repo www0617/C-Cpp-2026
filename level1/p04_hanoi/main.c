@@ -1,12 +1,16 @@
-# include <stdio.h>
-#define N 64
-void HAN(int k,char start ,char end ,char tempt)
-{if(k==1){printf("%c->%c\n",start,end);return;}
-    HAN(k-1,start,tempt,end);
-    printf("%c->%c\n",start,end);
-    HAN(k-1,tempt,end,start);}
-int main(void)
-{
-    char a='A';char b='B' ;char c='C';
-    HAN(N,a,c,b);
+#include <stdio.h>
+
+#define DISKS 4
+
+void hanoi(int n, char from, char to, char aux) {
+    if (n <= 0) return;
+
+    hanoi(n - 1, from, aux, to);
+    printf("%c -> %c\n", from, to);
+    hanoi(n - 1, aux, to, from);
+}
+
+int main(void) {
+    hanoi(DISKS, 'A', 'C', 'B');
+    return 0;
 }

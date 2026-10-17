@@ -1,34 +1,40 @@
 #include <stdio.h>
 
-int main() {
-    while (1){
-   long long  i;
-    printf("please type an int number\n");
-        int c=scanf("%lld", &i);
-        if (c == EOF) {
-            break;
-        }
-            if (c==0) {
-                while (getchar() != '\n'); printf("invalid input \n");continue;
-            }
+int main(void) {
+    long long n;
 
-    if (i <= 1) {
-        printf("neither prime nor composite\n");
-        continue;
-    }
-    if (i > 1) {
+    while (1) {
+        printf("please type an int number (Ctrl+Z then Enter to quit)\n");
+
+        int ret = scanf("%lld", &n);
+        if (ret == EOF) break;
+        if (ret == 0) {
+            int ch;
+            while ((ch = getchar()) != '\n' && ch != EOF) {
+            }
+            printf("invalid input\n");
+            continue;
+        }
+
+        if (n <= 1) {
+            printf("%lld: neither prime nor composite\n", n);
+            continue;
+        }
+
         int is_prime = 1;
-        for (long long j = 2; j  <= i/j; j++) {
-            if (i % j == 0) {
+        for (long long d = 2; d <= n / d; d++) {
+            if (n % d == 0) {
                 is_prime = 0;
                 break;
             }
         }
 
         if (is_prime)
-            printf("it is a prime number\n");
+            printf("%lld: it is a prime number\n", n);
         else
-            printf("it is a composite number\n");
+            printf("%lld: it is a composite number\n", n);
     }
-    } printf("end");return 0;
+
+    printf("end\n");
+    return 0;
 }
