@@ -50,16 +50,16 @@ void freeList(Node *head) {
     }
 
 }
-    int search(Node** searchp,int startnum) {
+    int search(Node* searchp,int startnum) {
         int num=startnum;
-    while (*searchp!=NULL) {
+    while (searchp!=NULL) {
 
-            if ((*searchp)->value==5){
+            if ((searchp)->value==5){
 
                 return num;
         }
         num++;
-        (*searchp)=(*searchp)->next;
+        (searchp)=(searchp)->next;
         }
 
 
@@ -100,13 +100,13 @@ int main() {
 
 
     Node*p1=head;
-    int first = search(&p1, 1);
+    int first = search(p1, 1);
     printf("first 5 num: %d\n", first);
 
     int second = -1;
     if (first != -1) {
         p1 = p1->next;
-        second = search(&p1, first+1);
+        second = search(p1, first+1);
     }
     printf("second 5 num: %d\n", second);
 
