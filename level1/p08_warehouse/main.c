@@ -63,7 +63,7 @@ void search(thingsinformation *p) {
         p = p->next;
     }
     printf("no such thing: %s\n", searchtype);
-}
+}      //查找
 
 void output(const char *type) {
     if (head == NULL) {
@@ -127,7 +127,7 @@ void output(const char *type) {
     }
 
     printf("no such thing: %s\n", type);
-}
+}          //输出
 
 void loadfromfile() {
     FILE *fp = fopen("stock.txt", "r");
@@ -141,7 +141,7 @@ void loadfromfile() {
         input(newtype, num);
     }
     fclose(fp);
-}
+}                //初始化数据
 
 void savetofile() {
     FILE *fp = fopen("stock.txt", "w");
@@ -155,7 +155,7 @@ void savetofile() {
         p = p->next;
     }
     fclose(fp);
-}
+}                //保留记忆
 
 void showall() {
     thingsinformation *p = head;
@@ -164,7 +164,7 @@ void showall() {
         p = p->next;
     }
     if (head == NULL) printf("storage is empty\n");
-}
+}               //展示库存
 
 int main() {
     loadfromfile();

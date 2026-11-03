@@ -23,3 +23,9 @@ add_executable(p08_warehouse  level1/p08_warehouse/main.c)
 add_executable(p09_safe_array_cpp  level1/p09_safe_array_cpp/main.cpp)
 
 add_executable(p10_zoo_cpp  level1/p10_zoo_cpp/main.cpp)
+
+add_executable(NeuralNetwork level2/NeuralNetworks/nw.c)
+
+# ---- five_in_a_roll：拆成 src/（界面）+ ai/（算法），见 Five_in_a_roll/CMakeLists.txt ----
+add_subdirectory(Five_in_a_roll)
+
