@@ -1,26 +1,17 @@
-﻿// ============================================================
-// src/main.cpp —— 把 view（画面）和 ai（算法）拼起来
+// ============================================================
+// src/main.cpp —— 只做界面与游戏流程（暂无算法）
 //
-// 这一版仍然用 .cpp 编译，但里面只用 C 接口（view.h / board.h / ai/*.h），
-// 所以你把它改名成 main.c、按 C 语法写，一样能编。
-//
-// 这里才是"游戏"：回合、落子确认、胜负、计时、菜单/选边/结束页。
-// 换算法只改 ai_move() 里那一行。
+// 工程当前只保留 UI + 棋盘接口：菜单、选边、落子、胜负、计时。
+// AI 那一手由 ai_move() 里的占位逻辑顶上（找第一个空点），
+// 你把算法写好后只改 ai_move() 的函数体，别处不用动。
 // ============================================================
 #include <cstdio>
 #include <cstring>
 
-#include "ai/alphabeta.h"
-#include "ai/mcts.h"
-#include "ai/minimax.h"
 #include "board.h"
 #include "view.h"
 
 namespace {
-
-/* ---------------- 可调参数 ---------------- */
-const int AI_DEPTH = 3;        /* α-β / minimax 的搜索深度 */
-const int MCTS_ITERS = 800;    /* 换成 MCTS 时的模拟次数 */
 
 enum Screen { SCR_MENU, SCR_SIDE, SCR_PLAY, SCR_OVER };
 enum { NO_WIN = 0, TIE = 2 };
@@ -45,7 +36,7 @@ int stone_count()
     int n = 0;
     for (int r = 0; r < BOARD_N; ++r)
         for (int c = 0; c < BOARD_N; ++c)
-            if (view_board[r][c] != EMPTY) ++n;
+            if (view_cells[r][c].state != EMPTY) ++n;
     return n;
 }
 
@@ -55,7 +46,7 @@ int in_rect(int x, int y, int l, int t, int w, int h)
 }
 
 /* 以 (r,c) 为落点的五连首尾 */
-int find_win_line(int b[BOARD_N][BOARD_N], int r, int c, int s, int line[4])
+int find_win_line(chessboard (*b)[BOARD_N], int r, int c, int s, int line[4])
 {
     static const int dr[4] = {1, 0, 1, 1};
     static const int dc[4] = {0, 1, 1, -1};
@@ -64,7 +55,7 @@ int find_win_line(int b[BOARD_N][BOARD_N], int r, int c, int s, int line[4])
         int cnt = 1;
 
         int rr = r - dr[k], cc = c - dc[k];
-        while (board_in(rr, cc) && b[rr][cc] == s) {
+        while (board_in(rr, cc) && b[rr][cc].state == s) {
             ++cnt;
             rr -= dr[k];
             cc -= dc[k];
@@ -73,7 +64,7 @@ int find_win_line(int b[BOARD_N][BOARD_N], int r, int c, int s, int line[4])
 
         rr = r + dr[k];
         cc = c + dc[k];
-        while (board_in(rr, cc) && b[rr][cc] == s) {
+        while (board_in(rr, cc) && b[rr][cc].state == s) {
             ++cnt;
             rr += dr[k];
             cc += dc[k];
@@ -91,7 +82,7 @@ int find_win_line(int b[BOARD_N][BOARD_N], int r, int c, int s, int line[4])
 
 void reset_all()
 {
-    memset(view_board, 0, sizeof(view_board));
+    view_clear_board();          /* 两份一起清：view_cells 与 view_cells */
     view_last_r = view_last_c = -1;
     view_hover_r = view_hover_c = -1;
     view_pending_r = view_pending_c = -1;
@@ -124,10 +115,10 @@ void start_game(int human)
 int place(int r, int c, int s)
 {
     if (!board_in(r, c)) return 0;
-    if (view_board[r][c] != EMPTY) return 0;
+    if (view_cells[r][c].state != EMPTY) return 0;
     if (s != g_turn) return 0;
 
-    view_board[r][c] = s;
+    view_cells[r][c].state = s;  /* 落子：直接改状态 */
     view_last_r = r;
     view_last_c = c;
 
@@ -137,7 +128,7 @@ int place(int r, int c, int s)
     }
 
     int line[4];
-    if (find_win_line(view_board, r, c, s, line)) {
+    if (find_win_line(view_cells, r, c, s, line)) {
         g_winner = s;
         memcpy(view_win_line, line, sizeof(line));
         g_screen = SCR_OVER;
@@ -160,33 +151,27 @@ int place(int r, int c, int s)
     return 1;
 }
 
-/* AI 还没写时的占位：随便找个空点，保证对局能继续。
-   你的算法写好后，ai_move() 里不会再走到这里，可以删掉整个函数。 */
-move_t fallback_move()
-{
-    for (int r = 0; r < BOARD_N; ++r)
-        for (int c = 0; c < BOARD_N; ++c)
-            if (view_board[r][c] == EMPTY) {
-                move_t m;
-                m.r = r;
-                m.c = c;
-                return m;
-            }
-    return move_none();
-}
-
-/* 轮到 AI：换算法就改这一行 */
+/* 轮到 AI 时调用。
+   现在工程里只有 UI + 棋盘接口，没有任何算法，所以这里先“随便找个空点”。
+   等你把算法加回来，只改这个函数体即可，别处都不用动。 */
 void ai_move()
 {
-    move_t m;
+    move_t m = move_none();
 
     if (g_screen != SCR_PLAY || g_turn != g_ai) return;
 
-    m = alphabeta_best(view_board, g_ai, AI_DEPTH);
-    /* m = minimax_best(view_board, g_ai, AI_DEPTH); */
-    /* m = mcts_best(view_board, g_ai, MCTS_ITERS);    */
+    /* TODO: 在这里调用你的搜索函数，例如
+     *       m = alphabeta_best(view_cells, g_ai, 3);
+     */
 
-    if (m.r < 0) m = fallback_move();   /* TODO: 算法写好后删掉这行 */
+    if (m.r < 0) {                      /* 还没有算法：占位落子 */
+        for (int r = 0; r < BOARD_N && m.r < 0; ++r)
+            for (int c = 0; c < BOARD_N && m.r < 0; ++c)
+                if (view_cells[r][c].state == EMPTY) {
+                    m.r = r;
+                    m.c = c;
+                }
+    }
 
     if (m.r >= 0) place(m.r, m.c, g_ai);
 }
@@ -300,7 +285,7 @@ void on_move(int x, int y, int r, int c)
     g_my = y;
 
     const int can_hover = (g_screen == SCR_PLAY) && (g_turn == g_human) &&
-                          (r >= 0) && (view_board[r][c] == EMPTY);
+                          (r >= 0) && (view_cells[r][c].state == EMPTY);
     if (can_hover) {
         g_hover_r = r;
         g_hover_c = c;
@@ -329,7 +314,7 @@ void on_click(int x, int y, int r, int c)
 
     case SCR_PLAY: {
         if (r < 0 || g_turn != g_human) break;
-        if (view_board[r][c] != EMPTY) {
+        if (view_cells[r][c].state != EMPTY) {
             g_pending_r = g_pending_c = -1;
         } else if (g_pending_r == r && g_pending_c == c) {
             place(r, c, g_human);          /* 第二次点同一个点：确认落子 */
@@ -418,7 +403,6 @@ int main()
 
         Sleep(10);
     }
-
     view_shutdown();
     return 0;
 }

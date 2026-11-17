@@ -1,8 +1,8 @@
-/* ============================================================
+﻿/* ============================================================
  * src/view.h —— 绘图层对外接口（C 语法，C/C++ 都能 include）
  *
  * 只做三件事：
- *   1) 暴露棋盘二维数组：view_board[r][c] = 1 黑 / -1 白 / 0 空
+ *   1) 暴露棋盘二维数组：view_cells[r][c].state = 1 黑 / -1 白 / 0 空
  *   2) 坐标换算：行列 <-> 像素，行列 <-> "H8"
  *   3) 把这些画出来
  *
@@ -47,12 +47,15 @@ typedef struct view_event_s {
     int key;    /* 虚拟键码 */
 } view_event_t;
 
+/* 单个交叉点的完整信息（chessboard）定义在 board.h 里，
+   这里直接用它的类型，不再重复定义。 */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ---------------- 棋盘状态（绘图直接读） ---------------- */
-extern Board view_board;           /* 1 黑 / -1 白 / 0 空 */
+/* ---------------- 棋盘（唯一数据源，直接改 state） ---------------- */
+extern Board view_cells;           /* chessboard[15][15]，每格带 r / c / state */
 extern int view_side;
 extern int view_last_r, view_last_c;
 extern int view_hover_r, view_hover_c;
@@ -86,6 +89,10 @@ void view_set_text_color(COLORREF c);
 int  view_cell_to_pixel(int r, int c, int *x, int *y);
 int  view_pixel_to_cell(int mx, int my, int *r, int *c);
 void view_cell_name(int r, int c, wchar_t *buf, int n);
+
+/* 整盘清空：把每格的 state 置 EMPTY，并把 r / c 重新对齐
+   （view_init 里会自动做一次，重开一局时调它即可） */
+void view_clear_board(void);
 
 #ifdef __cplusplus
 }

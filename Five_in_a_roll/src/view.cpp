@@ -1,7 +1,7 @@
 ﻿/* ============================================================
  * src/view.cpp —— EasyX 绘制 + 坐标换算 + 消息轮询
  * 对外是 C 接口（见 view.h），内部是 C++（EasyX 只能用 C++）。
- * 不判胜负、不管回合，只把 view_board 里的东西画出来。
+ * 不判胜负、不管回合，只把 view_cells 里的东西画出来。
  * ============================================================ */
 #include "view.h"
 
@@ -172,7 +172,7 @@ void draw_coords()
 }  // namespace
 
 /* ---------------- 状态 ---------------- */
-Board view_board = {{0}};
+Board view_cells;                          /* 唯一的棋盘数据 */
 int view_side = BLACK_STONE;
 int view_last_r = -1, view_last_c = -1;
 int view_hover_r = -1, view_hover_c = -1;
@@ -182,7 +182,18 @@ int view_clock_seconds = 0;
 const wchar_t* view_status = L"";
 const wchar_t* view_engine = L"";
 
-/* ---------------- 坐标 ---------------- */
+/* ---------------- 棋盘 ---------------- */
+void view_clear_board(void)
+{
+    for (int r = 0; r < BOARD_N; ++r) {
+        for (int c = 0; c < BOARD_N; ++c) {
+            view_cells[r][c].r = r;
+            view_cells[r][c].c = c;
+            view_cells[r][c].state = EMPTY;
+        }
+    }
+}
+
 int view_cell_to_pixel(int r, int c, int* x, int* y)
 {
     if (!board_in(r, c)) return 0;
@@ -227,7 +238,7 @@ int view_init(void)
 {
     SetProcessDPIAware();
 
-    g_hwnd = initgraph(PHYS_W, PHYS_H);
+    g_hwnd = initgraph(PHYS_W, PHYS_H, EX_SHOWCONSOLE);
     if (!g_hwnd) return 0;
 
     SetWindowTextW(g_hwnd, L"FIVE IN A ROLL // GOMOKU");
@@ -245,6 +256,7 @@ int view_init(void)
     setbkmode(TRANSPARENT);
 
     build_ghost_images();
+    view_clear_board();
     BeginBatchDraw();
 
     g_running = 1;
@@ -374,8 +386,8 @@ void view_draw_board(void)
     /* 棋子 */
     for (int r = 0; r < BOARD_N; ++r)
         for (int c = 0; c < BOARD_N; ++c)
-            if (view_board[r][c] != EMPTY)
-                draw_stone_r(px(c), py(r), view_board[r][c], 12);
+            if (view_cells[r][c].state != EMPTY)
+                draw_stone_r(px(c), py(r), view_cells[r][c].state, 12);
 
     /* 悬停 / 待确认的半透明棋子 */
     if (view_pending_r >= 0)
@@ -452,7 +464,7 @@ void view_draw_hud(void)
     int moves = 0;
     for (int r = 0; r < BOARD_N; ++r)
         for (int c = 0; c < BOARD_N; ++c)
-            if (view_board[r][c] != EMPTY) ++moves;
+            if (view_cells[r][c].state != EMPTY) ++moves;
 
     wchar_t b[16];
 

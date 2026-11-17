@@ -3,9 +3,8 @@
 # 由根目录 CMakeLists.txt 的 add_subdirectory(Five_in_a_roll) 引入，
 # 也可以单独打开本目录构建。
 #
-#   src/   画面：view（绘制 + 棋盘数组 + 坐标换算）+ main（组装）
-#   ai/    算法：eval / minimax / alphabeta / mcts
-#   include/ lib/  手动安装的 EasyX 26.9.25（MinGW-w64 x64 MSVCRT）
+# 当前只保留：UI（view + main）与棋盘接口（board.h）。
+# 以后加了算法，在 FIAR_SOURCES 里补上对应 .cpp 即可。
 # ============================================================
 cmake_minimum_required(VERSION 3.21)
 project(five_in_a_roll CXX)
@@ -16,11 +15,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(FIAR_SOURCES
     src/main.cpp
     src/view.cpp
-
-    ai/eval.cpp
-    ai/minimax.cpp
-    ai/alphabeta.cpp
-    ai/mcts.cpp
+        ai/ai.cpp
 )
 
 add_executable(five_in_a_roll ${FIAR_SOURCES})
