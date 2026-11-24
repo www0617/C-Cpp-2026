@@ -13,10 +13,9 @@ typedef struct things {
 } thingsinformation;
 
 thingsinformation *head = NULL;   /* 链表头 */
-thingsinformation *tail = NULL;   /* 链表尾，方便 O(1) 尾部追加 */
+thingsinformation *tail = NULL;   /* 链表尾 */
 
-/* 入库：型号已存在就累加数量，不存在就新建节点挂到尾部。
-   数量 <= 0 拒绝；累加前先判断会不会溢出 int。 */
+/* 入库：型号已存在就累加数量，不存在就新建节点挂到尾部。 */
 void input(char newthing[32], int num) {
     if (num <= 0) {
         printf("invalid num\n");
@@ -41,8 +40,8 @@ void input(char newthing[32], int num) {
         (thingsinformation *)malloc(sizeof(thingsinformation));
     if (ptrtonewthing == NULL) return;
 
-    strncpy(ptrtonewthing->type, newthing, 31);   /* 拷 31 字节留一位给 \0 */
-    ptrtonewthing->type[31] = '\0';               /* 手动补结尾符，防 strcmp 越界 */
+    strncpy(ptrtonewthing->type, newthing, 31);
+    ptrtonewthing->type[31] = '\0';
     ptrtonewthing->num  = num;
     ptrtonewthing->next = NULL;
 
@@ -55,7 +54,6 @@ void input(char newthing[32], int num) {
     }
 }
 
-/* 查询：只读遍历链表，不修改任何节点，找不到时明确提示 */
 void search(thingsinformation *p) {
     printf("please type the type of the thing\n");
     char searchtype[32];
@@ -75,11 +73,7 @@ void search(thingsinformation *p) {
     printf("no such thing: %s\n", searchtype);
 }
 
-/* 出库：先按型号找到节点，再问出多少。
-   摘节点分两种情况：
-   - 头节点没有前驱，单独处理，摘完要同步修 head/tail
-   - 中间/尾部节点用 prev->next 绕过它，尾节点还要把 tail 回退
-   数量 == 现有量时整条删除并 free，部分出库只减 num。 */
+/* 出库 */
 void output(const char *type) {
     if (head == NULL) {
         printf("the storage is empty\n");
@@ -144,37 +138,85 @@ void output(const char *type) {
     printf("no such thing: %s\n", type);
 }
 
-/* 启动时读库存文件；文件不存在当作空库存，不报错退出 */
-void loadfromfile() {
+
+int loadfromfile(void) {
     FILE *fp = fopen("stock.txt", "r");
     if (fp == NULL) {
-        printf("no file\n");
-        return;
+        printf("no file, start with empty storage\n");
+        return 0;
     }
+
     char newtype[32];
     int num;
-    while (fscanf(fp, "%31s %d", newtype, &num) == 2) {
+    int bad = 0;
+    int rec = 0;
+
+    while (1) {
+        int r = fscanf(fp, "%31s %d", newtype, &num);
+        if (r == EOF) {
+            break;
+        }
+        if (r != 2) {
+            ++bad;
+            int ch = fgetc(fp);
+            if (ch == EOF) {
+                break;
+            }
+            while (ch != '\n' && ch != EOF) {
+                ch = fgetc(fp);
+            }
+            continue;
+        }
+        if (num <= 0) {
+            ++bad;
+            continue;
+        }
         input(newtype, num);
+        ++rec;
     }
     fclose(fp);
+
+    if (bad > 0) {
+        printf("loaded %d record(s), skipped %d bad record(s)\n", rec, bad);
+    }
+    return bad;
 }
 
-/* 退出时把整条链表写回文件，一行「型号 数量」 */
-void savetofile() {
-    FILE *fp = fopen("stock.txt", "w");
+
+int savetofile(void) {
+    const char *tmpname = "stock.tmp";
+    FILE *fp = fopen(tmpname, "w");
     if (fp == NULL) {
-        printf("failed found no file\n");
-        return;
+        printf("cannot open %s for writing\n", tmpname);
+        return -1;
     }
+
     thingsinformation *p = head;
     while (p != NULL) {
-        fprintf(fp, "%s %d\n", p->type, p->num);
+        if (fprintf(fp, "%s %d\n", p->type, p->num) < 0) {
+            printf("write failed at record \"%s\"\n", p->type);
+            fclose(fp);
+            remove(tmpname);
+            return -1;
+        }
         p = p->next;
     }
-    fclose(fp);
+
+    if (fflush(fp) != 0 || fclose(fp) != 0) {
+        printf("flush/close failed\n");
+        remove(tmpname);
+        return -1;
+    }
+
+    remove("stock.txt");
+    if (rename(tmpname, "stock.txt") != 0) {
+        printf("cannot replace stock.txt\n");
+        remove(tmpname);
+        return -1;
+    }
+    return 0;
 }
 
-/* 打印全部库存，空表时提示 */
 void showall() {
     thingsinformation *p = head;
     while (p != NULL) {
@@ -185,7 +227,9 @@ void showall() {
 }
 
 int main() {
-    loadfromfile();
+    if (loadfromfile() > 0) {
+        printf("warning: bad records in stock.txt were skipped\n");
+    }
     while (1) {
         printf("please type a number: \n 1 for showing the storage \n 2 for input \n 3 for output \n 4 for exit \n 5 for search goods \n");
         int menu;
@@ -226,8 +270,9 @@ int main() {
                 break;
             }
             case 4: {
-                savetofile();               /* 先落盘 */
-                /* 再释放整条链表，防止内存泄漏 */
+                if (savetofile() != 0) {
+                    printf("ERROR: save failed, stock.txt may be incomplete\n");
+                }
                 thingsinformation *p = head;
                 thingsinformation *nextp;
                 while (p != NULL) {

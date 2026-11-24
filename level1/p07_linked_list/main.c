@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 /* 单向链表节点：存一个整数值，以及指向下一个节点的指针 */
 typedef struct Node {
@@ -55,16 +53,27 @@ void freeList(Node *head) {
     }
 }
 
-/* 从 searchp 节点开始找值为 5 的节点，返回它的序号（从 startnum 起数）。
-   命中就 return，没命中才前进；走到 NULL 还没找到就返回 -1。 */
-int search(Node *searchp, int startnum) {
-    int num = startnum;
-    while (searchp != NULL) {
-        if (searchp->value == 5) {
-            return num;
+/* 从 p 开始找第一个值为 v 的节点，返回节点指针；没找到返回 NULL。
+
+   这里返回"节点指针"而不是"序号"，是关键：
+   调用方要接着从命中节点的下一个继续找，就必须先拿到命中节点本身。
+   旧写法 search(p1, 1) 只返回序号、p1 仍停在 head，
+   于是 p1 = p1->next 从 head 往后挪，而不是从"第一个 5"往后挪——
+   只有第一个 5 恰好是头节点时才碰巧算对。 */
+Node *findNode(Node *p, int v) {
+    while (p != NULL && p->value != v) {
+        p = p->next;
+    }
+    return p;
+}
+
+/* 求节点在链表中的序号（从 1 起）；节点不在链表里返回 -1 */
+int nodeIndex(Node *head, Node *target) {
+    int i = 1;
+    for (Node *p = head; p != NULL; p = p->next, ++i) {
+        if (p == target) {
+            return i;
         }
-        num++;
-        searchp = searchp->next;
     }
     return -1;
 }
@@ -96,17 +105,43 @@ int main() {
     printf("NULL\n");
 
     /* 3. 找第一个 5 */
-    Node *p1 = head;
-    int first = search(p1, 1);
+    Node *firstNode = findNode(head, 5);
+    int first = (firstNode != NULL) ? nodeIndex(head, firstNode) : -1;
     printf("first 5 num: %d\n", first);
 
-    /* 4. 从第一个 5 之后继续找下一个 5 */
+    /* 4. 从第一个 5 之后继续找下一个 5。
+       起点必须是"命中节点->next"，而不是 head->next。 */
     int second = -1;
-    if (first != -1) {                       /* 第一个都没找到就别找下一个了 */
-        p1 = p1->next;                       /* 挪到第一个 5 的下一个 */
-        second = search(p1, first + 1);      /* 序号接着 first+1 数起 */
+    if (firstNode != NULL && firstNode->next != NULL) {
+        Node *secondNode = findNode(firstNode->next, 5);
+        if (secondNode != NULL) {
+            second = nodeIndex(head, secondNode);
+        }
     }
     printf("second 5 num: %d\n", second);
+
+    /* 5. 再验一遍"第一个 5 不在头节点"的情况。
+       反转后的链表是 5 4 5 2 1，第一个 5 恰好在头节点，
+       旧写法在这里碰巧算对；下面用未反转的 1 2 5 4 5 才能真正验证定位是否正确。 */
+    {
+        Node *h2 = NULL;
+        for (int i = 0; i < n; i++) {
+            appendNode(&h2, arr[i]);
+        }
+
+        Node *f2 = findNode(h2, 5);
+        int i2 = (f2 != NULL) ? nodeIndex(h2, f2) : -1;
+        int j2 = -1;
+        if (f2 != NULL && f2->next != NULL) {
+            Node *s2 = findNode(f2->next, 5);
+            if (s2 != NULL) {
+                j2 = nodeIndex(h2, s2);
+            }
+        }
+        printf("unreversed 1 2 5 4 5 -> first 5 num: %d, second 5 num: %d\n", i2, j2);
+        printf("expected            -> first 5 num: 3, second 5 num: 5\n");
+        freeList(h2);
+    }
 
     freeList(head);
     return 0;

@@ -85,6 +85,7 @@ static int loadLevel(int lv)
     char line[MAX_W + 4];
     FILE *fp;
     int y, len, x;
+    int target_total;
 
     snprintf(path, sizeof(path), LEVEL_FMT, lv);
 
@@ -96,8 +97,9 @@ static int loadLevel(int lv)
     memset(map, ' ', sizeof(map));
     memset(boxes, 0, sizeof(boxes));
     box_total = 0;
+    target_total = 0;
     gh = gw = 0;
-    px = py = 1;
+    px = py = -1;                   /* -1 = 还没找到玩家，用来校验地图里确实有 P */
 
     y = 0;
     while (y < MAX_H && fgets(line, (int)sizeof(line), fp) != NULL) {
@@ -108,6 +110,11 @@ static int loadLevel(int lv)
         }
         if (len == 0) {
             continue;
+        }
+        if (len > MAX_W) {          /* 一行超宽：地图文件坏了，不能悄悄截断 */
+            printf("level %d: line %d too long (max %d)\n", lv, y + 1, MAX_W);
+            fclose(fp);
+            return 0;
         }
         if (len > gw) {
             gw = len;
@@ -125,6 +132,7 @@ static int loadLevel(int lv)
                 break;
             case 'T':
                 map[y][x] = 'T';
+                ++target_total;
                 break;
             case 'B':
                 boxes[y][x] = 1;
@@ -143,7 +151,20 @@ static int loadLevel(int lv)
     fclose(fp);
 
     gh = y;
-    return (gh > 0 && gw > 0) ? 1 : 0;
+    if (gh <= 0 || gw <= 0) {
+        return 0;
+    }
+    if (px < 0 || py < 0) {                     /* 地图里没有 P：玩家没地方站 */
+        printf("level %d: no player 'P' in the map\n", lv);
+        return 0;
+    }
+    if (box_total == 0 || box_total != target_total) {
+        /* 箱子数和目标数不相等时这关是死局，直接拒绝加载 */
+        printf("level %d: %d box(es) vs %d target(s), they must match\n",
+               lv, box_total, target_total);
+        return 0;
+    }
+    return 1;
 }
 
 static void drawBoard(void)
@@ -213,7 +234,11 @@ static int isWin(void)
 
     for (y = 0; y < gh; y++) {
         for (x = 0; x < gw; x++) {
+            /* 箱子必须在目标上 */
             if (boxes[y][x] && map[y][x] != 'T') {
+                return 0;
+            }
+            if (map[y][x] == 'T' && !boxes[y][x]) {
                 return 0;
             }
         }
@@ -241,29 +266,51 @@ static void loadScores(int best[])
         return;
     }
     while (fscanf(fp, "%d %d", &lv, &st) == 2) {
-        if (lv >= 1 && lv <= MAX_LEVEL) {
-            best[lv] = st;
+        /* 只看关卡号 1..MAX_LEVEL、步数在合理范围内的记录；
+           坏行（0、负数、超大值）直接忽略，不让它污染成绩 */
+        if (lv >= 1 && lv <= MAX_LEVEL && st > 0 && st <= 99999) {
+            if (best[lv] == 0 || st < best[lv]) {
+                best[lv] = st;
+            }
         }
     }
     fclose(fp);
 }
 
-static void saveScores(const int best[])
+static int saveScores(const int best[])
 {
+    const char *tmpname = "levels/scores.tmp";
     FILE *fp;
     int i;
 
-    fp = fopen(SCORE_FILE, "w");
+    fp = fopen(tmpname, "w");
     if (fp == NULL) {
         printf("Cannot write scores file, check the levels folder.\n");
-        return;
+        return -1;
     }
     for (i = 1; i <= MAX_LEVEL; i++) {
         if (best[i] > 0) {
-            fprintf(fp, "%d %d\n", i, best[i]);
+            if (fprintf(fp, "%d %d\n", i, best[i]) < 0) {
+                fclose(fp);
+                remove(tmpname);
+                return -1;
+            }
         }
     }
-    fclose(fp);
+    /* 落盘失败也算保存失败，不能假装成功 */
+    if (fflush(fp) != 0 || fclose(fp) != 0) {
+        remove(tmpname);
+        return -1;
+    }
+
+    /* 先写 tmp 再替换，中途崩掉时原 scores.txt 仍然是完整可读的 */
+    remove(SCORE_FILE);
+    if (rename(tmpname, SCORE_FILE) != 0) {
+        printf("Cannot replace %s\n", SCORE_FILE);
+        remove(tmpname);
+        return -1;
+    }
+    return 0;
 }
 
 int main(void)
@@ -326,7 +373,9 @@ int main(void)
         } else {
             printf("Best so far: %d steps (%d pts)\n", best[lv], scoreOf(best[lv]));
         }
-        saveScores(best);
+        if (saveScores(best) != 0) {
+            printf("\n[error] scores NOT saved\n");
+        }
 
         printf("\nPress any key for the next level...");
         _getch();
