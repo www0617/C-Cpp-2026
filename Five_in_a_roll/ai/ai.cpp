@@ -392,6 +392,12 @@ print_board(board);
             while (getchar() != '\n'); // 清空输入缓冲区
             continue;
         }
+
+        {
+                int ch;
+                while ((ch = getchar()) != '\n' && ch != EOF);
+        }
+
         if (player_row < 1 || player_row > BOARD_SIZE || player_col < 1 || player_col > BOARD_SIZE || board[player_row-1][player_col-1] != EMPTY) {
             printf("invalid1\n");
             continue;
